@@ -75,8 +75,8 @@ lispGLobalEnv = LispSymbolTable [
   ("begin", ResultLambda last)
   ]
 
-symTblAddVar2 :: (String, LispResult) ->  M1.State LispSymbolTable ()
-symTblAddVar2 (s, v) = do
+symTblAddVar :: (String, LispResult) ->  M1.State LispSymbolTable ()
+symTblAddVar (s, v) = do
   sym <- M1.get
   M1.put $ LispSymbolTable ((s, v):lispSymbol sym)
 
@@ -92,7 +92,7 @@ lispEval (List (Atom x :xs)) = do
       let (Atom s) = head xs in
         let exp = last xs in do
           v <- lispEval exp
-          symTblAddVar2 ( s, v)
+          symTblAddVar ( s, v)
           return v
     "lambda" ->
       let (List ss) = head xs in
