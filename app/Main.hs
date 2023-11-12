@@ -19,7 +19,7 @@ data SExpression = Atom String
 
 lispParseStr :: ParsecT String u Identity SExpression
 lispParseStr = do
-  let p = letter <|> oneOf "+-*/"
+  let p = letter <|> oneOf "+-*/<>="
   s <- many1 p
   return $ Atom s
 
@@ -66,14 +66,37 @@ lispNumBinOp _ _ = error "error"
 
 
 
+boolfToIntf :: (Integer -> Integer -> Bool) -> Integer -> Integer -> Integer
+boolfToIntf f a b = if f a b then 1 else 0
+
 
 lispGLobalEnv :: LispSymbolTable
 lispGLobalEnv = LispSymbolTable [
   ("+", ResultLambda $ lispNumBinOp (+)),
-  ("-", ResultLambda $ lispNumBinOp (+)),
-  ("*", ResultLambda $ lispNumBinOp (+)),
+  ("-", ResultLambda $ lispNumBinOp (-)),
+  ("*", ResultLambda $ lispNumBinOp (*)),
+  ("<", ResultLambda $ (lispNumBinOp . boolfToIntf) (<)),
+  (">", ResultLambda $ (lispNumBinOp . boolfToIntf) (>)),
+  ("=", ResultLambda $ (lispNumBinOp . boolfToIntf) (==)),
+
+-- TODO
+  ("cons", ResultLambda $ lispNumBinOp (+)),
+  ("car", ResultLambda $ lispNumBinOp (+)),
+  ("cdr", ResultLambda $ lispNumBinOp (+)),
+  ("list", ResultLambda $ lispNumBinOp (+)),
+  ("list?", ResultLambda $ lispNumBinOp (+)),
+  ("null?", ResultLambda $ lispNumBinOp (+)),
+  ("symbol?", ResultLambda $ lispNumBinOp (+)),
+  ("number?", ResultLambda $ lispNumBinOp (+)),
+  ("boolean?", ResultLambda $ lispNumBinOp (+)),
+  ("pair?", ResultLambda $ lispNumBinOp (+)),
+  ("eq?", ResultLambda $ lispNumBinOp (+)),
+
+
+
   ("begin", ResultLambda last)
   ]
+
 
 symTblAddVar :: (String, LispResult) ->  M1.State LispSymbolTable ()
 symTblAddVar (s, v) = do
@@ -87,6 +110,12 @@ lispEval :: SExpression -> M1.State LispSymbolTable LispResult
 lispEval (List (Atom x :xs)) = do
   sym <- M1.get
   case x of
+    "if" -> do
+      let (cond:thenExp:elseExp:_) = xs
+      condRes <- lispEval cond
+      case condRes of
+        ResultNumber 0 -> lispEval elseExp
+        _ -> lispEval thenExp
     --Atom "define" -> 
     "define" ->
       let (Atom s) = head xs in
@@ -107,7 +136,7 @@ lispEval (List (Atom x :xs)) = do
         er <-  mapM lispEval xs
         return (f er)
       Just (ResultNumber n) -> return (ResultNumber n)
-      Nothing -> error "no"
+      Nothing -> error "no symbol"
 lispEval (Number x) = pure (ResultNumber x)
 lispEval (Atom x) = do
   sym <- M1.get
@@ -134,3 +163,4 @@ main = do
   print $ lispRun "(define myfun (+ 1 2))"
   print $ lispRun "(begin (define myfun (+ 1 (* 2 24432))) myfun)"
   print $ lispRun "(begin (define myfun (lambda (x) (+ x 132))) (myfun 1))"
+  print $ lispRun "(begin (if (> 100 0) 1 3))"
